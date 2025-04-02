@@ -1,10 +1,14 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { postQueryOptions } from '../utils/posts'
 import { PostErrorComponent } from './posts.$postId'
 
 export const Route = createFileRoute('/posts_/$postId/deep')({
-  loader: async ({ params: { postId }, context }) => {
+  loader: async ({ params: { postId }, context, cause }) => {
+    if (cause !== 'preload' || typeof window !== 'undefined') {
+      return;
+    }
+
     const data = await context.queryClient.ensureQueryData(
       postQueryOptions(postId),
     )
@@ -22,7 +26,13 @@ export const Route = createFileRoute('/posts_/$postId/deep')({
 
 function PostDeepComponent() {
   const { postId } = Route.useParams()
-  const postQuery = useSuspenseQuery(postQueryOptions(postId))
+  const postQuery = useQuery(postQueryOptions(postId))
+
+  if (!postQuery.data) {
+    return (
+      <div>Loading...</div>
+    )
+  }
 
   return (
     <div className="p-2 space-y-2">

@@ -1,11 +1,16 @@
-import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { postQueryOptions } from '../utils/posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { NotFound } from '~/components/NotFound'
+import { WithErrorHandler } from '~/components/WithErrorHandler';
+import { Link } from '~/components/Link';
 
 export const Route = createFileRoute('/posts/$postId')({
-  loader: async ({ params: { postId }, context }) => {
+  loader: async ({ params: { postId }, context, cause }) => {
+    if (cause !== 'preload' || typeof window !== 'undefined') {
+      return;
+    }
     const data = await context.queryClient.ensureQueryData(
       postQueryOptions(postId),
     )
@@ -30,22 +35,36 @@ export function PostErrorComponent({ error }: ErrorComponentProps) {
 
 function PostComponent() {
   const { postId } = Route.useParams()
-  const postQuery = useSuspenseQuery(postQueryOptions(postId))
+  const postQuery = useQuery(postQueryOptions(postId))
+
+  if (!postQuery.data) {
+    return (
+      <div>Loading...</div>
+    )
+  }
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-xl font-bold underline">{postQuery.data.title}</h4>
-      <div className="text-sm">{postQuery.data.body}</div>
-      <Link
-        to="/posts/$postId/deep"
-        params={{
-          postId: postQuery.data.id,
-        }}
-        activeProps={{ className: 'text-black font-bold' }}
-        className="block py-1 text-blue-800 hover:text-blue-600"
-      >
-        Deep View
-      </Link>
-    </div>
+    <WithErrorHandler
+      error={postQuery.error as any}
+      errorComponent={Route.options.errorComponent}
+      notFoundComponent={Route.options.notFoundComponent}
+    >
+      <div className="space-y-2">
+        <h4 className="text-xl font-bold underline">{postQuery.data.title}</h4>
+        <div className="text-sm">{postQuery.data.body}</div>
+        <Link
+          placeholderData={postQuery.data}
+          to="/posts/$postId/deep"
+          params={{
+            postId: postQuery.data.id,
+          }}
+          activeProps={{className: 'text-black font-bold'}}
+          className="block py-1 text-blue-800 hover:text-blue-600"
+        >
+          Deep View
+        </Link>
+      </div>
+    </WithErrorHandler>
+
   )
 }

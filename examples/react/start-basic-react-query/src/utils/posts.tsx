@@ -44,6 +44,7 @@ export const fetchPost = createServerFn({ method: 'GET' })
 
 export const postQueryOptions = (postId: string) =>
   queryOptions({
+    placeholderData: typeof window !== 'undefined' ? window.placeholderData : undefined,
     queryKey: ['post', postId],
     queryFn: () => fetchPost({ data: postId }),
   })
